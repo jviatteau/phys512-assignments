@@ -4,23 +4,6 @@ from scipy import integrate
 
 #Problem 2
 
-
-def integrate(fun,a,b,tol):
-    x=np.linspace(a,b,5)
-    dx=x[1]-x[0]
-    y=fun(x)
-    i1=(y[0]+4*y[2]+y[4])/3*(2*dx)
-    i2=(y[0]+4*y[1]+2*y[2]+4*y[3]+y[4])/3*dx
-    myerr=np.abs(i1-i2)
-    if myerr<tol:
-        return i2
-    else:
-        mid=x[2]
-        int1=integrate(fun,a,mid,tol/2)
-        int2=integrate(fun,mid,b,tol/2)
-        return int1+int2
-
-
 def integrate_adaptative(fun,a,b,tol,extra=None):
     x=np.linspace(a,b,5) #Get the points over the interval to estimate the 5-point integral
     dx=x[1]-x[0]
@@ -64,13 +47,43 @@ for z in zz:
         E=integrate_adaptative(integrand, 0, np.pi, 1e-6) #Integrate using our routine from problem 2
     ans=np.append(ans, E)#Store the result
 #Plot the results
+'''
 plt.plot(zz, ans, label='Homemade Integrator')
 plt.plot(zz, ansq, label='Quad integrated')
 plt.legend()
 plt.show()
 plt.savefig('Problem1.png')
-
+'''
 
 #Problem 3
+
+x = np.linspace(0.5, 1, 100)
+y = np.log2(x)
+x_rescale = 4*x-3
+chebs = np.polynomial.chebyshev.chebfit(x_rescale, y, 50)
+
+tol=1e-6
+deg=0
+for cheb in chebs:
+    if np.abs(cheb)>tol:
+        deg+=1
+chebs=chebs[:deg]    
+
+def mylog2(x, chebs):
+    m, e = np.frexp(x)
+    log2m = np.polynomial.chebyshev.chebval(4*m-3, chebs)
+    return log2m + e
+
+xx=np.linspace(0.1, 10, 1001)
+
+plt.plot(xx, mylog2(xx, chebs))
+plt.plot(xx, np.log2(xx))
+plt.show()
+
+
+
+
+
+
 
 
