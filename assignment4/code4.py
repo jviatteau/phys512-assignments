@@ -37,6 +37,7 @@ for j in range(10):
     m += dm #Add step to parameters
 
 #Plot the figure and residuals
+
 fig, ax = plt.subplots(2, 1, sharex=True)
 ax[0].plot(t*1000, d) #Time in ms to make it more readable
 ax[0].plot(t*1000, pred)
@@ -93,6 +94,7 @@ for j in range(10):
 #Print best-fit parameters and plot the model and data
 print('Single Lorentzian numerical fit :')
 print('a = ', m[0], ', w = ', m[1], ', t$_0$ = ', m[2])
+
 fig, ax = plt.subplots(2, 1, sharex=True)
 ax[0].plot(t*1000, d)
 ax[0].plot(t*1000, pred)
@@ -131,12 +133,77 @@ m_errs = np.diag(cov)**0.5 #Extract errors for each parameter from covariance ma
 print('Triple Lorentzian numerical fit :')
 for i in range(len(p)):
     print(p[i], ' = ', m[i], '+/-', m_errs[i])
+
 fig, ax = plt.subplots(2, 1, sharex=True)
 ax[0].plot(t*1000, d)
 ax[0].plot(t*1000, pred)
 ax[1].plot(t*1000, d-pred)
 fig.show()
 fig.savefig('Triple_lorentian.png')
+
+#(f)
+def get_chisq(m, t, d): #Function to get chi squared as a function of parameters
+    pred, grad = calc_lorentz_num(lorentz_triple, m, t) #Get the info for the fit
+    r = d - pred #Difference between data and model prediction
+    avg_err = np.mean(np.abs(r)) #Noise estimate
+    Ninv = 1/(avg_err**2) #Value of inverted N matrix
+    chisq = Ninv*r.T@r #Chi squared
+    return chisq
+
+print('Best-fit chi squared is : ', get_chisq(m, t, d))
+
+m_new = np.random.multivariate_normal(m, cov) #Get a set of parameters slightly offset from the best-fit ones
+chisq_new = get_chisq(m_new, t, d) #Determine new chi squared
+print("Random offset parameters chi squared is : ",chisq_new)
+pred_new = lorentz_triple(t, m_new)
+fig, ax = plt.subplots(2, 1, sharex=True)
+ax[0].plot(t*1000, d)
+ax[0].plot(t*1000, pred_new)
+ax[1].plot(t*1000, d-pred_new)
+fig.show()
+fig.savefig('f.png')
+
+
+#MCMC
+
+nstep = 10000 #Number of steps we want to take
+chain = np.zeros([nstep, np.size(m)]) #Initialize chain
+chain[0] = m_new #Start at the position after a random step from the position we had above
+chisq=get_chisq(chain[0], t, d) #Get chi squared at starting position
+for i in range(1,nstep):
+    #For each step, get a random step using the covariance matrix from (d) and the previous step
+    step = np.random.multivariate_normal(chain[i-1,:], cov)
+    chisq_new=get_chisq(step, t, d) #Get new chi squared
+    accept=np.exp(-0.5*(chisq_new-chisq)) 
+    if chisq_new<chisq: #If new chi^2 is lower than old chi^2, accept the step
+        chain[i,:] = step #Register the new position
+        chisq = chisq_new #Update chi^2
+    elif accept>np.random.rand(1): #else, sometimes randomly accept the step
+        chain[i,:] = step
+        chisq = chisq_new
+    else: #else, reject the step
+        chain[i,:] = chain[i-1,:] #Next position is the same as current
+    if(i%100==0):
+        #Print the progress to give me an update
+        #and keep me from being anxious about a possible crash
+        print('Chain has done ', i, ' steps.')
+
+#Plot the full chain
+plt.clf()
+plt.plot(chain[:,0])
+plt.savefig('MCMC.png')
+
+chain = chain[100:] #Discard the first 100 non-converged points to get the parameter estimates
+
+#Print the results for each parameter
+for i in range(len(p)):
+    print(p[i], ' = ', np.mean(chain[:,i]), '+/-', np.std(chain[:,i]))
+
+
+
+
+
+
 
 
 
